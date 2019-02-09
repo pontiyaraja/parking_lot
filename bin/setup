@@ -5,3 +5,16 @@
 #
 # After this is run, bin/parking_lot
 # should Just Work.
+
+sudo mkdir $GOPATH/src/github.com
+sudo mkdir $GOPATH/src/github.com/pontiyaraja
+#pwd
+cd ..
+#pwd
+sudo mv parking_lot $GOPATH/src/github.com/pontiyaraja
+cd $GOPATH/src/github.com/pontiyaraja/parking_lot
+go get
+go install
+cd parkinglot
+#pwd 
+go test -v

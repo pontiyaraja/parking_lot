@@ -2,3 +2,7 @@
 # Complete bin/setup so that after it is
 # run, bin/parking_lot can be used to launch
 # it.
+#echo "First arg: $1"
+#echo $1 
+cd $GOPATH/src/github.com/pontiyaraja/parking_lot
+go run main.go $1

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -12,19 +11,20 @@ import (
 )
 
 func main() {
-	filePath, err := filepath.Abs("./file_inputs.txt")
-	if err != nil {
-		fmt.Println("failed to get present working directory")
-	}
-	file, err := os.Open(filePath)
-	if err != nil {
-		fmt.Println("failed to open file")
+	var scanner *bufio.Scanner
+	if len(os.Args) > 1 {
+		fileName := os.Args[1]
+		file, err := os.Open(fileName)
+		if err != nil {
+			fmt.Println("failed to open file")
+		}
+		scanner = bufio.NewScanner(file)
 	}
 
 	reader := bufio.NewReader(os.Stdin)
-	scanner := bufio.NewScanner(file)
 
 	var dataString string
+	var err error
 	isScannerEmpty := false
 	for {
 		if scanner != nil && scanner.Scan() {
@@ -71,7 +71,6 @@ func main() {
 			break
 
 		case "exit":
-			fmt.Println("Bye")
 			os.Exit(0)
 		}
 	}
@@ -101,7 +100,7 @@ func parkTheVehicle(regNO, color string) {
 		}
 		return
 	}
-	fmt.Println("Allocated slot number: ", slot.SlotID)
+	fmt.Println("Allocated slot number:", slot.SlotID)
 	slot = nil
 	return
 }
@@ -132,9 +131,9 @@ func clearTheslot(parkedSlotID string) {
 
 func showThelotStatus() {
 	slots := parking.GetSlotStatus()
-	fmt.Println(fmt.Sprintf("%-15s%-22s   %-13s", "Slot No.", "Registration No", "Colour"))
+	fmt.Println(fmt.Sprintf("%-12s%-19s%-7s", "Slot No.", "Registration No", "Colour"))
 	for _, slot := range slots {
-		fmt.Println(fmt.Sprintf("%-15d%-25s%-10s", slot.SlotID, slot.VehicleRegNO, slot.VehicleColor))
+		fmt.Println(fmt.Sprintf("%-12d%-19s%-7s", slot.SlotID, slot.VehicleRegNO, slot.VehicleColor))
 	}
 }
 
