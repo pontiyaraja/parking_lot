@@ -1,4 +1,4 @@
-package parking_lot
+package parking
 
 import (
 	"errors"
@@ -12,8 +12,9 @@ type vehicleInfo struct {
 	VehicleColor string
 }
 
-type framework struct {
-	SlotInterface slotInfo
+type Framework struct {
+	SlotInfo    slotInfo
+	VehicleInfo vehicleInfo
 }
 
 type slotInfo struct {
@@ -33,20 +34,23 @@ type slotStorage struct {
 	slotCount      int
 }
 
-var slotMap map[string]slotInfo
+var slotMap map[int]slotInfo
 var slotStorageMap map[string][]slotInfo
 var freeSlotMap map[int]bool
 var slotCount int
 var maxSlotCount int
 
 func init() {
-	slotMap = make(map[string]slotInfo)
+	slotMap = make(map[int]slotInfo)
 	slotStorageMap = make(map[string][]slotInfo)
 	freeSlotMap = make(map[int]bool)
 }
 
 func (vehicle *vehicleInfo) GetSlot() *slotInfo {
-	freeSlots := getFreeSlots()
+	if vehicleParked(vehicle.VehicleRegNO) {
+		return nil
+	}
+	freeSlots := GetFreeSlots()
 	slot := slotInfo{vehicleInfo: vehicle}
 	if freeSlots != nil {
 		slot.SlotID = freeSlots[0]
@@ -59,23 +63,26 @@ func (vehicle *vehicleInfo) GetSlot() *slotInfo {
 		return nil
 	}
 	slot.Ticket = "random uuid"
-	_, ok := slotMap[slot.VehicleRegNO]
-	if !ok {
-		slotMap[slot.VehicleRegNO] = slot
-		slotStorageMap[vehicle.VehicleColor] = append(slotStorageMap[vehicle.VehicleColor], slot)
-		return &slot
-	}
-	return nil
+	slotMap[slot.SlotID] = slot
+	slotStorageMap[vehicle.VehicleColor] = append(slotStorageMap[vehicle.VehicleColor], slot)
+	return &slot
+}
+
+func vehicleParked(regNo string) bool {
+	_, ok := slotStorageMap[regNo]
+	return ok
 }
 
 func (slot *slotInfo) Exit() *bool {
 	//remove the slot at the position slotID
-	delete(slotMap, slot.VehicleRegNO)
-	return slot.RemoveVehicle()
+	delete(slotMap, slot.SlotID)
+	isRemoved := slot.RemoveVehicle()
+	slot = nil
+	return isRemoved
 }
 
 func (slot *slotInfo) RemoveVehicle() *bool {
-	slots := getVehicleByProps(slot.VehicleColor)
+	slots := GetVehicleByProps(slot.VehicleColor)
 	var slotArray []slotInfo
 	if slots != nil {
 		for _, slotData := range slots {
@@ -85,6 +92,7 @@ func (slot *slotInfo) RemoveVehicle() *bool {
 		}
 		slotStorageMap[slot.VehicleColor] = slotArray
 		freeSlotMap[slot.SlotID] = true
+		delete(slotStorageMap, slot.VehicleRegNO)
 		return func(resp bool) *bool {
 			return &resp
 		}(true)
@@ -92,7 +100,7 @@ func (slot *slotInfo) RemoveVehicle() *bool {
 	return nil
 }
 
-func getFreeSlots() []int {
+func GetFreeSlots() []int {
 	var freeSlot []int
 	for key := range freeSlotMap {
 		// if freeSlot == 0 {
@@ -106,15 +114,15 @@ func getFreeSlots() []int {
 	return freeSlot
 }
 
-func setMAxSlot(mxSlot int) {
+func SetMAxSlot(mxSlot int) {
 	maxSlotCount = mxSlot
 }
 
-func getStorageMap() map[string][]slotInfo {
+func GetStorageMap() map[string][]slotInfo {
 	return slotStorageMap
 }
 
-func getVehicleByProps(prop string) []slotInfo {
+func GetVehicleByProps(prop string) []slotInfo {
 	val, ok := slotStorageMap[prop]
 	if ok {
 		return val
@@ -122,11 +130,19 @@ func getVehicleByProps(prop string) []slotInfo {
 	return nil
 }
 
-func getSlotStatus() []slotInfo {
+func GetSlotStatus() []slotInfo {
 	var slotStatus []slotInfo
 	for _, val := range slotMap {
 		slotStatus = append(slotStatus, val)
 	}
 	sort.Slice(slotStatus, func(i, j int) bool { return slotStatus[i].SlotID < slotStatus[j].SlotID })
 	return slotStatus
+}
+
+func GetSlotBySlotID(slotID int) *slotInfo {
+	val, ok := slotMap[slotID]
+	if ok {
+		return &val
+	}
+	return nil
 }
