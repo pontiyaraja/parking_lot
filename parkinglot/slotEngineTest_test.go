@@ -2,14 +2,18 @@ package parking
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
 func TestGetSlot(t *testing.T) {
 	vehicle := &vehicleInfo{VehicleColor: "white", VehicleRegNO: "TN AH 2839"}
 	SetMAxSlot(5)
-	slot := vehicle.GetSlot()
-	fmt.Println(slot)
+	slot, err := vehicle.GetSlot()
+	if err != nil && strings.Compare(err.Error(), "slots are full") == 0 {
+
+	}
+	t.Log(slot)
 	if slot.VehicleColor != vehicle.VehicleColor {
 		t.Error("failed to create slot")
 	}
@@ -17,11 +21,27 @@ func TestGetSlot(t *testing.T) {
 		t.Error("slot not created successfully")
 	}
 }
+func TestSlotsFull(t *testing.T) {
+	vehicle := &vehicleInfo{VehicleColor: "white", VehicleRegNO: "TN AH 2839"}
+	vehicle1 := &vehicleInfo{VehicleColor: "white", VehicleRegNO: "TN AH 2832"}
+	SetMAxSlot(1)
+	_, err := vehicle.GetSlot()
+	if err != nil {
+		t.Error("failed to allocate slot")
+	}
+	_, err = vehicle1.GetSlot()
+	if err != nil && strings.Compare(err.Error(), "slots are full") == 0 {
+		t.Log(err.Error())
+	}
+}
 
 func TestExit(t *testing.T) {
 	vehicle := &vehicleInfo{VehicleColor: "white", VehicleRegNO: "TN AH 2839"}
 	SetMAxSlot(5)
-	slot := vehicle.GetSlot()
+	slot, err := vehicle.GetSlot()
+	if err != nil {
+		t.Error("failed to allocate slot")
+	}
 	isLeft := slot.Exit()
 	if isLeft != nil && *isLeft != true {
 		t.Error("failed to clear slot")
@@ -60,7 +80,10 @@ func TestMaxSlot(t *testing.T) {
 	vehicle2.GetSlot()
 	vehicle3.GetSlot()
 	vehicle4.GetSlot()
-	slot := vehicle5.GetSlot()
+	slot, err := vehicle5.GetSlot()
+	if slot == nil && err != nil {
+		t.Log("failed to allocate slot")
+	}
 	if slot != nil {
 		t.Error("should not exced the maximum slot")
 	}
@@ -79,20 +102,26 @@ func TestFreeSlotAllocation(t *testing.T) {
 	vehicle5 := &vehicleInfo{VehicleColor: "white", VehicleRegNO: "TN AC 2898"}
 	SetMAxSlot(5)
 	vehicle.GetSlot()
-	slot1 := vehicle1.GetSlot()
+	slot1, err := vehicle1.GetSlot()
+	if err != nil {
+		t.Error("failed to allocate slot")
+	}
 	isLeft := slot1.Exit()
 	if isLeft == nil && *isLeft != true {
 		t.Error("failed to free the slot")
 	}
-	slot2 := vehicle2.GetSlot()
+	slot2, err := vehicle2.GetSlot()
+	if err != nil {
+		t.Error("failed to allocate slot")
+	}
 	if slot2.SlotID != slot1.SlotID {
 		t.Error("allocating wrong slot")
 	}
 	vehicle3.GetSlot()
 	vehicle4.GetSlot()
-	slot := vehicle5.GetSlot()
-	if slot == nil {
-		t.Error("failed to allocate slot")
+	slot, err := vehicle5.GetSlot()
+	if slot == nil && err != nil {
+		t.Log("failed to allocate slot")
 	}
 	fmt.Println(GetSlotStatus())
 	if len(GetSlotStatus()) > 5 || len(GetSlotStatus()) > 5 {
