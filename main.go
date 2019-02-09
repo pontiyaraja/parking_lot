@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -11,71 +12,152 @@ import (
 )
 
 func main() {
+	filePath, err := filepath.Abs("./file_inputs.txt")
+	if err != nil {
+		fmt.Println("failed to get present working directory")
+	}
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("failed to open file")
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	scanner := bufio.NewScanner(file)
+
+	var dataString string
+	isScannerEmpty := false
 	for {
-		reader := bufio.NewReader(os.Stdin)
-		dataString, err := reader.ReadString('\n')
-		fmt.Println(dataString, err)
-		dataString = strings.TrimSuffix(dataString, "\n")
-		if err != nil {
-			os.Exit(1)
+		if scanner != nil && scanner.Scan() {
+			dataString = scanner.Text()
+		} else {
+			if !isScannerEmpty {
+				scanner = nil
+			}
+			dataString, err = reader.ReadString('\n')
+			if err != nil {
+				fmt.Println("wrong input please follow the instructions")
+			}
+			dataString = strings.TrimSuffix(dataString, "\n")
 		}
 		dataArray := strings.Split(dataString, " ")
+
 		switch dataArray[0] {
 		case "create_parking_lot":
-			fmt.Println("allocating lot ............")
-			maxSlot, err := strconv.Atoi(dataArray[1])
-			if err != nil {
-				fmt.Println("failed to parse convert parking lot", err, dataArray[1])
-				break
-			}
-			parking.SetMAxSlot(maxSlot)
+			allocateSlot(dataArray[1])
 			break
 
 		case "park":
-			fmt.Println(" Parking ............")
-			vehicle := parking.Framework{}.VehicleInfo
-			vehicle.VehicleRegNO = dataArray[1]
-			vehicle.VehicleColor = dataArray[2]
-			slot := vehicle.GetSlot()
-			fmt.Println("booked slot ", slot)
-			slot = nil
-			fmt.Println("Status   :    ", parking.GetSlotStatus())
+			parkTheVehicle(dataArray[1], dataArray[2])
 			break
 
 		case "leave":
-			fmt.Println("leaving.......")
-			slotID, err := strconv.Atoi(dataArray[1])
-			if err != nil {
-				fmt.Println("failed to parse convert parking lot", err, dataArray[1])
-				break
-			}
-			slotInfo := parking.GetSlotBySlotID(slotID)
-			if slotInfo == nil {
-				fmt.Println("vehicle not found")
-				break
-			}
-			if slotInfo.SlotID == slotID {
-				exited := slotInfo.Exit()
-				if exited != nil && *exited == false {
-					fmt.Println("failed to exit")
-					break
-				}
-				break
-			} else {
-				fmt.Println("failed to get vehicle")
-				break
-			}
+			clearTheslot(dataArray[1])
+			break
 
 		case "status":
-			slots := parking.GetSlotStatus()
-			fmt.Println("Slot No.    Registration No        Colour")
-			for _, slot := range slots {
-				fmt.Println(fmt.Sprintf("%d           %s          %s", slot.SlotID, slot.VehicleRegNO, slot.VehicleColor))
-			}
+			showThelotStatus()
+			break
+
+		case "registration_numbers_for_cars_with_colour":
+			getRegNOByVehicleProps(dataArray[1], "regNOByColor")
+			break
+
+		case "slot_numbers_for_cars_with_colour":
+			getRegNOByVehicleProps(dataArray[1], "slotNOByColor")
+			break
+
+		case "slot_number_for_registration_number":
+			getRegNOByVehicleProps(dataArray[1], "slotNOByRegNO")
 			break
 
 		case "exit":
+			fmt.Println("Bye")
 			os.Exit(0)
 		}
+	}
+}
+
+func allocateSlot(input string) {
+	maxSlot, err := strconv.Atoi(input)
+	if err != nil {
+		fmt.Println("failed to parse convert parking lot", err, input)
+		return
+	}
+	parking.SetMAxSlot(maxSlot)
+	fmt.Println(fmt.Sprintf("Created a parking lot with %d slots", maxSlot))
+	return
+}
+
+func parkTheVehicle(regNO, color string) {
+	vehicle := parking.Framework{}.VehicleInfo
+	vehicle.VehicleRegNO = regNO
+	vehicle.VehicleColor = color
+	slot, err := vehicle.GetSlot()
+	if err != nil {
+		if err.Error() == "already parked" {
+			fmt.Println("Vehicle already parked")
+		} else if err.Error() == "slots are full" {
+			fmt.Println("Sorry, parking lot is full")
+		}
+		return
+	}
+	fmt.Println("Allocated slot number: ", slot.SlotID)
+	slot = nil
+	return
+}
+
+func clearTheslot(parkedSlotID string) {
+	slotID, err := strconv.Atoi(parkedSlotID)
+	if err != nil {
+		fmt.Println("failed to parse convert parking lot", err, parkedSlotID)
+		return
+	}
+	slotInfo := parking.GetSlotBySlotID(slotID)
+	if slotInfo == nil {
+		fmt.Println("vehicle not found")
+		return
+	}
+	if slotInfo.SlotID == slotID {
+		exited := slotInfo.Exit()
+		if exited != nil && *exited == false {
+			fmt.Println("failed to exit")
+			return
+		}
+		fmt.Println(fmt.Sprintf("Slot number %d is free", slotInfo.SlotID))
+		return
+	}
+	fmt.Println("failed to get vehicle")
+	return
+}
+
+func showThelotStatus() {
+	slots := parking.GetSlotStatus()
+	fmt.Println(fmt.Sprintf("%-15s%-22s   %-13s", "Slot No.", "Registration No", "Colour"))
+	for _, slot := range slots {
+		fmt.Println(fmt.Sprintf("%-15d%-25s%-10s", slot.SlotID, slot.VehicleRegNO, slot.VehicleColor))
+	}
+}
+
+func getRegNOByVehicleProps(color, props string) {
+	var resString string
+	slots := parking.GetVehicleByProps(color)
+	if len(slots) > 0 {
+		if strings.Compare(props, "slotNOByRegNO") == 0 {
+			fmt.Println(slots[0].SlotID)
+			return
+		}
+		for index, slot := range slots {
+			if index > 0 {
+				resString = resString + ", "
+			}
+			if strings.Compare(props, "regNOByColor") == 0 {
+				resString = resString + slot.VehicleRegNO
+			} else if strings.Compare(props, "slotNOByColor") == 0 {
+				resString = resString + strconv.Itoa(slot.SlotID)
+			}
+		}
+		fmt.Print(resString + "\n")
+	} else {
+		fmt.Println("Not found")
 	}
 }

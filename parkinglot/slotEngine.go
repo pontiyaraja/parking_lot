@@ -2,7 +2,6 @@ package parking
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
 )
@@ -46,9 +45,9 @@ func init() {
 	freeSlotMap = make(map[int]bool)
 }
 
-func (vehicle *vehicleInfo) GetSlot() *slotInfo {
+func (vehicle *vehicleInfo) GetSlot() (*slotInfo, error) {
 	if vehicleParked(vehicle.VehicleRegNO) {
-		return nil
+		return nil, errors.New("already parked")
 	}
 	freeSlots := GetFreeSlots()
 	slot := slotInfo{vehicleInfo: vehicle}
@@ -59,13 +58,13 @@ func (vehicle *vehicleInfo) GetSlot() *slotInfo {
 		slotCount++
 		slot.SlotID = slotCount
 	} else {
-		fmt.Println(errors.New(" slots are full "))
-		return nil
+		return nil, errors.New("slots are full")
 	}
 	slot.Ticket = "random uuid"
 	slotMap[slot.SlotID] = slot
 	slotStorageMap[vehicle.VehicleColor] = append(slotStorageMap[vehicle.VehicleColor], slot)
-	return &slot
+	slotStorageMap[vehicle.VehicleRegNO] = []slotInfo{slot}
+	return &slot, nil
 }
 
 func vehicleParked(regNo string) bool {
@@ -110,12 +109,13 @@ func GetFreeSlots() []int {
 		// }
 		freeSlot = append(freeSlot, key)
 	}
-	sort.Slice(freeSlot, func(i, j int) bool { return i < j })
+	sort.Slice(freeSlot, func(i, j int) bool { return freeSlot[i] < freeSlot[j] })
 	return freeSlot
 }
 
 func SetMAxSlot(mxSlot int) {
 	maxSlotCount = mxSlot
+	clearSlots()
 }
 
 func GetStorageMap() map[string][]slotInfo {
@@ -145,4 +145,14 @@ func GetSlotBySlotID(slotID int) *slotInfo {
 		return &val
 	}
 	return nil
+}
+
+func clearSlots() {
+	slotMap = nil
+	slotStorageMap = nil
+	freeSlotMap = nil
+	slotCount = 0
+	slotMap = make(map[int]slotInfo)
+	slotStorageMap = make(map[string][]slotInfo)
+	freeSlotMap = make(map[int]bool)
 }
